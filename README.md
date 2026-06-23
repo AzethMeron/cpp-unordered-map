@@ -154,6 +154,38 @@ cost climbs, which is precisely why `0.8` is the default:
 > [`benchmarks/data/sweep_results.csv`](benchmarks/data/sweep_results.csv);
 > absolute numbers vary with CPU/compiler, but the shapes are representative.
 
+### Versus the state-of-the-art flat maps
+
+`benchmarks/compare_maps.cpp` adds `boost::unordered_flat_map` and
+`absl::flat_hash_map` to the size sweep (run it with
+`scripts/run_comparison.sh`). Per-operation cost and speedup-over-`std`:
+
+![comparison: ns/op vs N](docs/img/compare_size.png)
+![comparison: speedup over std](docs/img/compare_speedup.png)
+
+Representative figures at N = 10⁶ (ns per operation, lower = faster):
+
+| operation | `std` | `fum` | `boost` flat | `absl` flat |
+|-----------|------:|------:|-------------:|------------:|
+| insert    | 212   | 85    | 47           | 52          |
+| find hit  | 31    | 30    | 14           | 16          |
+| iterate   | 60    | 13    | 4            | 6           |
+
+**How to read this.** `boost`/`absl` are ~2× faster than `fum` on lookups — but
+that speed is bought with a property they cannot give back: they are **flat**
+maps that relocate their elements on every rehash, so pointers and references to
+elements are invalidated. They are *not* drop-in replacements for
+`std::unordered_map`; swapping one in can silently break code that holds a
+pointer or reference to a stored value.
+
+`fum` deliberately keeps that stability (elements live in a never-moved arena),
+which costs one extra indirection on a confirmed hit. The result is the
+genuinely useful middle ground: **a true `std::unordered_map` drop-in that is
+several times faster than `std` itself**, sitting between `std` and the
+non-compatible flat maps. If you do not need the stability guarantee and can
+tolerate a non-standard API, a flat map is faster; if you need a correct
+drop-in, `fum` is the fast one.
+
 ---
 
 ## Building & testing
@@ -237,9 +269,11 @@ tests/                          unit, edge-case, allocator, node-handle, adversa
 fuzz/differential_fuzz.cpp      differential fuzzer (standalone + libFuzzer)
 benchmarks/benchmark.cpp        head-to-head benchmark vs std::unordered_map
 benchmarks/sweep.cpp            size/density sweep -> CSV
-benchmarks/plot_sweep.py        renders the sweep CSV into the graphs
-benchmarks/data/                checked-in sweep results
-scripts/                        run_all.sh, run_sanitizers.sh
+benchmarks/compare_maps.cpp     4-way sweep vs boost & absl flat maps -> CSV
+benchmarks/bench_common.hpp     shared, container-generic timing helpers
+benchmarks/plot_sweep.py        renders any sweep/comparison CSV into graphs
+benchmarks/data/                checked-in sweep & comparison results
+scripts/                        run_all.sh, run_sanitizers.sh, run_comparison.sh
 docs/COMPATIBILITY.md           compatibility notes & complexity guarantees
 docs/img/                       performance graphs shown in this README
 CMakeLists.txt                  build definition (tests, fuzzer, benchmark)

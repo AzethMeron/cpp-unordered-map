@@ -118,5 +118,24 @@ if(FUM_BUILD_BENCHMARKS)
     # Parameter-sweep benchmark; emits CSV consumed by benchmarks/plot_sweep.py.
     add_executable(sweep benchmarks/sweep.cpp)
     target_link_libraries(sweep PRIVATE fum::fum)
+    target_include_directories(sweep PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks)
     target_compile_options(sweep PRIVATE ${FUM_WARNING_FLAGS} -DNDEBUG)
+
+    # Optional four-way comparison vs boost::unordered_flat_map and
+    # absl::flat_hash_map.  Built only when Abseil's CMake config is found (it
+    # supplies the link libraries); Boost headers are picked up automatically.
+    # Uses relaxed warnings because third-party headers do not pass the strict
+    # flag set.  When unavailable, use scripts/run_comparison.sh instead.
+    find_package(absl CONFIG QUIET)
+    if(absl_FOUND)
+        add_executable(compare_maps benchmarks/compare_maps.cpp)
+        target_link_libraries(compare_maps PRIVATE fum::fum absl::flat_hash_map)
+        target_include_directories(compare_maps PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks)
+        target_compile_options(compare_maps PRIVATE -O3 -DNDEBUG -Wall)
+    else()
+        message(STATUS
+            "fum: Abseil not found; skipping compare_maps "
+            "(use scripts/run_comparison.sh)")
+    endif()
 endif()

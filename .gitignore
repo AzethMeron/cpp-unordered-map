@@ -10,6 +10,7 @@ cmake-build-*/
 *.exe
 benchmark
 sweep
+compare_maps
 differential_fuzz
 differential_libfuzzer
 test_api
