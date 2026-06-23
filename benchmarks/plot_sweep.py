@@ -104,22 +104,37 @@ def plot_speedup(data, out_dir):
 
 
 def plot_density(data, out_dir):
+    # Default max_load_factor is 0.8: the table doubles (rehashes) on reaching
+    # it, so in normal use the load factor cycles in [0.4, 0.8] and never goes
+    # higher. The >0.8 region is only reached here by deliberately raising
+    # max_load_factor for the experiment.
     fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
     for ax, op in zip(axes, ("find_hit", "find_miss")):
         for container, color in (("fum", FUM_COLOR), ("std", STD_COLOR)):
             points = data["density"][op][container]
             xs = [p[0] for p in points]
             ys = [p[1] for p in points]
-            ax.plot(xs, ys, marker="o", markersize=5, color=color,
+            ax.plot(xs, ys, marker="o", markersize=5, color=color, zorder=3,
                     label=container)
+        ax.axvspan(0.4, 0.8, color="green", alpha=0.08, zorder=0,
+                   label="default operating band")
+        ax.axvspan(0.8, 0.97, color="red", alpha=0.06, zorder=0,
+                   label="only if max_load_factor raised")
+        ax.axvline(0.8, color="black", ls="--", lw=1.1, alpha=0.7, zorder=2)
+        top = ax.get_ylim()[1]
+        ax.text(0.8, top * 0.97, "  default rehash\n  threshold (0.8)",
+                fontsize=9, va="top", ha="left", alpha=0.8)
         ax.set_title(f"{OP_TITLES[op]} vs table density")
         ax.set_xlabel("achieved load factor (elements / buckets)")
         ax.set_ylabel("ns per lookup")
         ax.grid(True, ls=":", alpha=0.4)
-        ax.legend()
-    fig.suptitle("Lookup cost as the table fills up (fixed table size, ~1M slots)",
-                 fontsize=14)
-    fig.tight_layout(rect=(0, 0, 1, 0.95))
+        ax.legend(loc="upper left", fontsize=9)
+    fig.suptitle(
+        "Lookup cost as the table fills up (fixed ~1M-slot table)\n"
+        "By default fum rehashes at load factor 0.8, so it never operates to "
+        "the right of the dashed line",
+        fontsize=13)
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
     path = f"{out_dir}/sweep_density.png"
     fig.savefig(path, dpi=110)
     plt.close(fig)

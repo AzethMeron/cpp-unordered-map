@@ -138,11 +138,15 @@ chasing starts to miss cache:
 
 ![ns/op vs N](docs/img/sweep_size.png)
 
-**Lookup cost vs table density** (fixed ~1M-slot table). `find (miss)` stays
-cheap for `fum` because most probes are rejected by the in-cache fingerprint
-without ever touching element memory; `find (hit)` is comparable up to ~0.6 load
-and then climbs as Robin Hood probe chains lengthen — which is why the default
-`max_load_factor` is `0.8`, so the table rehashes before reaching that regime:
+**Lookup cost vs table density** (fixed ~1M-slot table). Note the default
+`max_load_factor` is `0.8`: on reaching it the table doubles its bucket count,
+so in normal use the load factor *cycles within ≈[0.4, 0.8]* and never crosses
+the dashed line (the > 0.8 region below was forced for the experiment by raising
+`max_load_factor` and pinning the bucket count). Inside that operating band,
+`find (miss)` is consistently faster for `fum` — most probes are rejected by the
+in-cache fingerprint without ever touching element memory — and `find (hit)` is
+on par with `std`. Past 0.8 `fum`'s Robin Hood probe chains lengthen and hit
+cost climbs, which is precisely why `0.8` is the default:
 
 ![ns/op vs load factor](docs/img/sweep_density.png)
 
