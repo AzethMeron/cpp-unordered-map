@@ -114,8 +114,41 @@ workload), `<int,int>`, N = 1,000,000. `speedup = std_time / fum_time`:
 `find`/`insert` — but that is exactly the HashDoS-vulnerable pattern the mixing
 layer defends against (and a case better served by a plain array). At small map
 sizes (≲ 10⁵ elements that fit in cache) `fum`'s extra element indirection makes
-`find` a few tens of percent slower; the advantage grows with size as cache
-misses start to dominate. Run the suite yourself: `./benchmark`.
+`find (hit)` a few tens of percent slower; the advantage grows with size as
+cache misses start to dominate. Run the suite yourself: `./benchmark`.
+
+### Sweeps
+
+`benchmarks/sweep.cpp` sweeps element count and table density and writes CSV;
+`benchmarks/plot_sweep.py` turns it into the graphs below.
+
+```sh
+g++ -std=c++20 -O3 -DNDEBUG -Iinclude benchmarks/sweep.cpp -o sweep
+./sweep results.csv                       # ~a few minutes up to N = 4e6
+python3 benchmarks/plot_sweep.py results.csv docs/img   # needs matplotlib
+```
+
+**Speedup vs element count** (`std` ns/op ÷ `fum` ns/op; above 1.0 = `fum`
+faster). The `fum` advantage widens with `N` as `std`'s per-node pointer
+chasing starts to miss cache:
+
+![speedup vs N](docs/img/sweep_speedup.png)
+
+**Cost per operation vs element count** (both axes log; lower is faster):
+
+![ns/op vs N](docs/img/sweep_size.png)
+
+**Lookup cost vs table density** (fixed ~1M-slot table). `find (miss)` stays
+cheap for `fum` because most probes are rejected by the in-cache fingerprint
+without ever touching element memory; `find (hit)` is comparable up to ~0.6 load
+and then climbs as Robin Hood probe chains lengthen — which is why the default
+`max_load_factor` is `0.8`, so the table rehashes before reaching that regime:
+
+![ns/op vs load factor](docs/img/sweep_density.png)
+
+> The data behind these plots is checked in at
+> [`benchmarks/data/sweep_results.csv`](benchmarks/data/sweep_results.csv);
+> absolute numbers vary with CPU/compiler, but the shapes are representative.
 
 ---
 
@@ -199,8 +232,12 @@ include/fum/unordered_map.hpp   the library (single header)
 tests/                          unit, edge-case, allocator, node-handle, adversarial tests
 fuzz/differential_fuzz.cpp      differential fuzzer (standalone + libFuzzer)
 benchmarks/benchmark.cpp        head-to-head benchmark vs std::unordered_map
+benchmarks/sweep.cpp            size/density sweep -> CSV
+benchmarks/plot_sweep.py        renders the sweep CSV into the graphs
+benchmarks/data/                checked-in sweep results
 scripts/                        run_all.sh, run_sanitizers.sh
 docs/COMPATIBILITY.md           compatibility notes & complexity guarantees
+docs/img/                       performance graphs shown in this README
 CMakeLists.txt                  build definition (tests, fuzzer, benchmark)
 ```
 

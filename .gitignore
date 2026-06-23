@@ -9,6 +9,7 @@ cmake-build-*/
 *.out
 *.exe
 benchmark
+sweep
 differential_fuzz
 differential_libfuzzer
 test_api

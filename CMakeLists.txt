@@ -114,4 +114,9 @@ if(FUM_BUILD_BENCHMARKS)
     target_link_libraries(benchmark PRIVATE fum::fum)
     # FUM_WARNING_FLAGS already implies -O3; -DNDEBUG drops asserts for timing.
     target_compile_options(benchmark PRIVATE ${FUM_WARNING_FLAGS} -DNDEBUG)
+
+    # Parameter-sweep benchmark; emits CSV consumed by benchmarks/plot_sweep.py.
+    add_executable(sweep benchmarks/sweep.cpp)
+    target_link_libraries(sweep PRIVATE fum::fum)
+    target_compile_options(sweep PRIVATE ${FUM_WARNING_FLAGS} -DNDEBUG)
 endif()
