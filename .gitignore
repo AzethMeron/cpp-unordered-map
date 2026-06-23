@@ -1,0 +1,25 @@
+# Build output
+/build/
+build*/
+cmake-build-*/
+
+# Compiled binaries / objects
+*.o
+*.obj
+*.out
+*.exe
+benchmark
+sweep
+compare_maps
+differential_fuzz
+differential_libfuzzer
+test_api
+test_edge_cases
+test_allocator
+test_node_handle
+test_adversarial
+
+# Editor / OS
+*.swp
+.DS_Store
+compile_commands.json
