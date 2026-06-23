@@ -22,7 +22,9 @@ STD_FLAGS="-std=c++20 -O3 -pipe -Wall -Wextra -Wformat=2 -Wconversion \
 -Wshadow -g"
 INCLUDES="-I${ROOT}/include -I${ROOT}/tests"
 
-TESTS=(test_api test_edge_cases test_allocator test_node_handle test_adversarial)
+TESTS=(test_api test_edge_cases test_allocator test_node_handle test_adversarial
+       test_set)
+FUZZERS=(differential_fuzz differential_fuzz_set)
 FUZZ_ITERS=300000
 
 # Sanitizer configurations to try.  ThreadSanitizer is irrelevant (the container
@@ -59,22 +61,25 @@ run_config() {
         fi
     done
 
-    # Differential fuzzer.
-    local fuzz_binary="${BUILD_DIR}/fuzz_${name}"
-    # shellcheck disable=SC2086
-    if ${CXX} ${STD_FLAGS} ${flags} -I"${ROOT}/include" \
-            "${ROOT}/fuzz/differential_fuzz.cpp" -o "${fuzz_binary}"; then
-        if "${fuzz_binary}" "${FUZZ_ITERS}" > "${BUILD_DIR}/fuzz_${name}.out" 2>&1; then
-            echo "[PASS] differential_fuzz :: $(tail -n 1 "${BUILD_DIR}/fuzz_${name}.out")"
+    # Differential fuzzers (map and set).
+    for fuzzer in "${FUZZERS[@]}"; do
+        local fuzz_binary="${BUILD_DIR}/${fuzzer}_${name}"
+        # shellcheck disable=SC2086
+        if ${CXX} ${STD_FLAGS} ${flags} -I"${ROOT}/include" \
+                "${ROOT}/fuzz/${fuzzer}.cpp" -o "${fuzz_binary}"; then
+            if "${fuzz_binary}" "${FUZZ_ITERS}" \
+                    > "${BUILD_DIR}/${fuzzer}_${name}.out" 2>&1; then
+                echo "[PASS] ${fuzzer} :: $(tail -n 1 "${BUILD_DIR}/${fuzzer}_${name}.out")"
+            else
+                echo "[FAIL] ${fuzzer} (${name})"
+                cat "${BUILD_DIR}/${fuzzer}_${name}.out"
+                overall_status=1
+            fi
         else
-            echo "[FAIL] differential_fuzz (${name})"
-            cat "${BUILD_DIR}/fuzz_${name}.out"
+            echo "[BUILD FAIL] ${fuzzer} (${name})"
             overall_status=1
         fi
-    else
-        echo "[BUILD FAIL] differential_fuzz (${name})"
-        overall_status=1
-    fi
+    done
 }
 
 for config in none asan_ubsan; do
@@ -89,18 +94,21 @@ if command -v valgrind > /dev/null 2>&1; then
     echo "=================================================================="
     echo "Valgrind memcheck"
     echo "=================================================================="
-    vg_binary="${BUILD_DIR}/test_edge_valgrind"
-    # shellcheck disable=SC2086
-    ${CXX} -std=c++20 -g -O1 ${INCLUDES} \
-        "${ROOT}/tests/test_edge_cases.cpp" -o "${vg_binary}"
-    if valgrind --error-exitcode=1 --leak-check=full --errors-for-leak-kinds=all \
-            "${vg_binary}" > "${BUILD_DIR}/valgrind.out" 2>&1; then
-        echo "[PASS] valgrind (test_edge_cases): no errors, no leaks"
-    else
-        echo "[FAIL] valgrind reported errors:"
-        tail -n 40 "${BUILD_DIR}/valgrind.out"
-        overall_status=1
-    fi
+    for vg_test in test_edge_cases test_set; do
+        vg_binary="${BUILD_DIR}/${vg_test}_valgrind"
+        # shellcheck disable=SC2086
+        ${CXX} -std=c++20 -g -O1 ${INCLUDES} \
+            "${ROOT}/tests/${vg_test}.cpp" -o "${vg_binary}"
+        if valgrind --error-exitcode=1 --leak-check=full \
+                --errors-for-leak-kinds=all \
+                "${vg_binary}" > "${BUILD_DIR}/valgrind_${vg_test}.out" 2>&1; then
+            echo "[PASS] valgrind (${vg_test}): no errors, no leaks"
+        else
+            echo "[FAIL] valgrind (${vg_test}) reported errors:"
+            tail -n 40 "${BUILD_DIR}/valgrind_${vg_test}.out"
+            overall_status=1
+        fi
+    done
 else
     echo "valgrind not found; skipping memcheck"
 fi

@@ -1,18 +1,26 @@
-# `fum::unordered_map`
+# `fum::unordered_map` / `fum::unordered_set`
 
-A header-only, C++20, **100%-API-compatible drop-in replacement** for
-`std::unordered_map` that is faster and far more cache friendly, while keeping
-the standard's hardest guarantee: **stable references and pointers to elements**.
+Header-only, C++20, **100%-API-compatible drop-in replacements** for
+`std::unordered_map` and `std::unordered_set` that are faster and far more cache
+friendly, while keeping the standard's hardest guarantee: **stable references and
+pointers to elements**.
 
 ```cpp
 #include "fum/unordered_map.hpp"
+#include "fum/unordered_set.hpp"
 
 fum::unordered_map<std::string, int> counts;   // same API as std::unordered_map
 for (const auto& word : words) ++counts[word];
+
+fum::unordered_set<int> seen;                   // same API as std::unordered_set
+seen.insert(42);
 ```
 
-It reuses everything from the standard library — `std::hash`, `std::equal_to`,
-`std::allocator`, `std::pair` — and layers a faster data structure underneath.
+They reuse everything from the standard library — `std::hash`, `std::equal_to`,
+`std::allocator`, `std::pair` — and layer a faster data structure underneath.
+Both containers share a single open-addressing engine
+(`fum/detail/hash_table.hpp`); `unordered_set` is the same engine with the key
+itself as the stored value, so everything below applies equally to both.
 
 ---
 
@@ -264,9 +272,12 @@ UndefinedBehaviorSanitizer** and **Valgrind**.
 ## Project layout
 
 ```
-include/fum/unordered_map.hpp   the library (single header)
-tests/                          unit, edge-case, allocator, node-handle, adversarial tests
-fuzz/differential_fuzz.cpp      differential fuzzer (standalone + libFuzzer)
+include/fum/unordered_map.hpp   std::unordered_map drop-in (thin adapter)
+include/fum/unordered_set.hpp   std::unordered_set drop-in (thin adapter)
+include/fum/detail/hash_table.hpp  the shared open-addressing engine
+tests/                          unit, edge-case, allocator, node-handle, adversarial, set tests
+fuzz/differential_fuzz.cpp      map differential fuzzer (standalone + libFuzzer)
+fuzz/differential_fuzz_set.cpp  set differential fuzzer (standalone + libFuzzer)
 benchmarks/benchmark.cpp        head-to-head benchmark vs std::unordered_map
 benchmarks/sweep.cpp            size/density sweep -> CSV
 benchmarks/compare_maps.cpp     4-way sweep vs boost & absl flat maps -> CSV
