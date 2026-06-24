@@ -75,7 +75,8 @@ if(FUM_BUILD_TESTS)
         test_edge_cases
         test_allocator
         test_node_handle
-        test_adversarial)
+        test_adversarial
+        test_set)
     foreach(test_name IN LISTS FUM_TEST_SOURCES)
         add_executable(${test_name} tests/${test_name}.cpp)
         fum_configure_target(${test_name})
@@ -83,13 +84,18 @@ if(FUM_BUILD_TESTS)
         add_test(NAME ${test_name} COMMAND ${test_name})
     endforeach()
 
-    # The differential fuzzer doubles as a randomized regression test; run a
+    # The differential fuzzers double as randomized regression tests; run a
     # modest number of iterations as part of `ctest`.
     if(FUM_BUILD_FUZZERS)
         add_executable(differential_fuzz fuzz/differential_fuzz.cpp)
         fum_configure_target(differential_fuzz)
         add_test(NAME differential_fuzz_smoke
                  COMMAND differential_fuzz 100000 12345)
+
+        add_executable(differential_fuzz_set fuzz/differential_fuzz_set.cpp)
+        fum_configure_target(differential_fuzz_set)
+        add_test(NAME differential_fuzz_set_smoke
+                 COMMAND differential_fuzz_set 100000 12345)
     endif()
 endif()
 

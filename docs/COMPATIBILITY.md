@@ -93,3 +93,22 @@ arena, index table and bookkeeping vectors. `propagate_on_container_copy_assignm
 `propagate_on_container_move_assignment`, `propagate_on_container_swap` and
 `is_always_equal` are all respected, and stateful allocators with unequal
 instances trigger element-wise move/copy as required.
+
+## `fum::unordered_set`
+
+`unordered_set` is built on the same `detail::hash_table` engine as
+`unordered_map` (the key is stored directly as the value), so every guarantee
+above — reference/pointer stability, complexity, the `max_load_factor` default,
+the bucket interface, allocator-awareness — applies identically. The set-specific
+points required by `[unord.set]`:
+
+* `value_type` is `Key`, and **both `iterator` and `const_iterator` are constant
+  iterators** (`*it` is `const Key&`): set elements cannot be mutated in place,
+  since that would change their hash/identity.
+* The node handle exposes `value()` (returning `Key&` on the detached element)
+  rather than `key()` / `mapped()`.
+* `insert`/`emplace` return `pair<iterator, bool>`; there is no `operator[]`,
+  `at`, `try_emplace`, `insert_or_assign`, or `mapped_type` (none apply to a
+  set).
+* Non-member `operator==` compares set membership (equal sizes and every element
+  of one present in the other).
